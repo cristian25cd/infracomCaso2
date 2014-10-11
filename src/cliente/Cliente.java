@@ -24,15 +24,25 @@ public class Cliente
 	private Socket socket;
 	private BufferedReader lector;
 	private PrintWriter escritor;
-
-    //-----------------------------------------------------------------
-    // Constructores
-    //-----------------------------------------------------------------
-
-    /**
-     *  
-     */
-    public Cliente( )
+	
+	//-----------------------------------------------------------------
+	// Constantes
+	//-----------------------------------------------------------------
+    
+	private final static String HOLA ="HOLA";
+	private final static String ACK = "ACK";
+	private final static String ALGORITMOS = "ALGORITMOS";
+	private final static String STATUS ="STATUS";
+	private final static String OK = "OK";
+	private final static String ERROR = "ERROR";
+	private final static String CERTSRV = "CERTSRV";
+	private final static String CERTCLNT ="CERTCLNT";
+	private final static String INIT = "INIT";
+	private final static String INFO = "INFO"; 
+	
+	
+	
+	public Cliente( )
     {
     	try {
 			socket = new Socket("infracomp.virtual.uniandes.edu.co",80);
