@@ -35,7 +35,7 @@ public class Cliente
     public Cliente( )
     {
     	try {
-			socket = new Socket("157.253.199.185",9999);
+			socket = new Socket("infracomp.virtual.uniandes.edu.co",80);
 			lector = new BufferedReader(new InputStreamReader(socket.getInputStream())); 
 			escritor = new PrintWriter(socket.getOutputStream(), true);
 		} 
