@@ -61,29 +61,4 @@ public class Cliente
     // Métodos
     //-----------------------------------------------------------------
     
-    
-    //-----------------------------------------------------------------
-    // Puntos de Extensión
-    //-----------------------------------------------------------------
-
-    /**
-     * Método para la extensión 1
-     * @return respuesta1
-     */
-    public String metodo1(String mensaje)
-    {
-    	escritor.println(mensaje);
-        return "Se envió el mensaje";
-    }
-
-    /**
-     * Método para la extensión2
-     * @return respuesta2
-     */
-    public String metodo2( )
-    {
-        return "Respuesta 2";
-    }
-
-
 }
