@@ -31,20 +31,9 @@ import org.bouncycastle.x509.util.*;
 public class Cliente
 {
 	//-----------------------------------------------------------------
-	// Atributos
-	//-----------------------------------------------------------------
-	private Socket socket;
-	private BufferedReader lector;
-	private PrintWriter escritor;
-	private static byte[] certServ;
-	private static byte[] certClie;
-	private static PublicKey pubKey;
-	private static PrivateKey privKey;
-
-	//-----------------------------------------------------------------
 	// Constantes
 	//-----------------------------------------------------------------
-
+	
 	private final static String HOLA ="HOLA";
 	private final static String ACK = "ACK";
 	private final static String ALGORITMOS = "ALGORITMOS";
@@ -59,18 +48,31 @@ public class Cliente
 	//-----------------------------------------------------------------
 	// Constantes Algoritmos
 	//-----------------------------------------------------------------
-
+	
 	private final static String DES ="DES";
 	private final static String AES = "AES";
 	private final static String BLOWFISH = "Blowfish";
 	private final static String RC4 ="RC4";
-
+	
 	private final static String RSA = "RSA";
-
+	
 	private final static String HMACMD5 ="HMACMD5";
 	private final static String HMACSHA1 = "HMACSHA1";
 	private final static String HMACSHA256 = "HMACSHA256";
-
+	
+	//-----------------------------------------------------------------
+	// Atributos
+	//-----------------------------------------------------------------
+	private Socket socket;
+	private BufferedReader lector;
+	private PrintWriter escritor;
+	private static byte[] certServ;
+	private static byte[] certClie;
+	private static PublicKey pubKey;
+	private static PrivateKey privKey;
+	//-----------------------------------------------------------------
+	// Constructor
+	//-----------------------------------------------------------------
 	public Cliente( )
 	{
 		try {
