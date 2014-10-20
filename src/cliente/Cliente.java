@@ -1,29 +1,21 @@
 package cliente;
 
 import java.io.BufferedReader;
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.math.BigInteger;
 import java.net.Socket;
 import java.net.UnknownHostException;
 import java.security.*;
-import java.security.cert.CertificateEncodingException;
-import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
-import java.util.Calendar;
 import java.util.Date;
 
+import javax.crypto.Cipher;
 import javax.security.auth.x500.X500Principal;
 
-import org.bouncycastle.*;
 import org.bouncycastle.x509.*;
-import org.bouncycastle.asn1.*;
 import org.bouncycastle.asn1.x509.*;
-import org.bouncycastle.jce.PrincipalUtil;
-import org.bouncycastle.x509.util.*;
 
 /**
  *  
@@ -33,7 +25,7 @@ public class Cliente
 	//-----------------------------------------------------------------
 	// Constantes
 	//-----------------------------------------------------------------
-	
+
 	private final static String HOLA ="HOLA";
 	private final static String ACK = "ACK";
 	private final static String ALGORITMOS = "ALGORITMOS";
@@ -48,24 +40,25 @@ public class Cliente
 	//-----------------------------------------------------------------
 	// Constantes Algoritmos
 	//-----------------------------------------------------------------
-	
+
 	private final static String DES ="DES";
 	private final static String AES = "AES";
 	private final static String BLOWFISH = "Blowfish";
 	private final static String RC4 ="RC4";
-	
+
 	private final static String RSA = "RSA";
-	
+
 	private final static String HMACMD5 ="HMACMD5";
 	private final static String HMACSHA1 = "HMACSHA1";
 	private final static String HMACSHA256 = "HMACSHA256";
-	
+
 	//-----------------------------------------------------------------
 	// Atributos
 	//-----------------------------------------------------------------
 	private Socket socket;
 	private BufferedReader lector;
 	private PrintWriter escritor;
+	private static KeyPair keyPair;
 	private static byte[] certServ;
 	private static byte[] certClie;
 	private static PublicKey pubKey;
@@ -76,7 +69,7 @@ public class Cliente
 	public Cliente( )
 	{
 		try {
-			socket = new Socket("infracomp.virtual.uniandes.edu.co",443);
+			socket = new Socket("infracomp.virtual.uniandes.edu.co",80);
 			lector = new BufferedReader(new InputStreamReader(socket.getInputStream())); 
 			escritor = new PrintWriter(socket.getOutputStream(), true);
 			getKey();
@@ -127,25 +120,25 @@ public class Cliente
 					try {
 						res = c.lector.readLine();
 						System.out.println("se recibio " + res);
-						
+
 						//LECTURA DEL CERTIDFICADO
 						certServ= res.getBytes();
-						
+
 						//CREACION Y ENVIO DEL CERTIFICADO
 						c.escritor.println(CERTCLNT);
 						System.out.println("Se envio "+CERTCLNT);
-						
+
 						X509Certificate cer = certificado();
 						certClie = cer.getEncoded();
 						c.escritor.println(certClie);
 						System.out.println("Se envio "+certClie);
-						
+
 					} catch (Exception e) {
 						// TODO: handle exception
 					}
-				
+
 				}
-				else if (res.equals(INIT)) 
+				else if (res.contains(INIT)) 
 				{
 					c.escritor.println(INIT);
 					System.out.println("Se envio "+INIT);
@@ -207,15 +200,51 @@ public class Cliente
 	{
 		KeyPairGenerator keyGen;
 		try {
-			keyGen = KeyPairGenerator.getInstance("RSA");
+			keyGen = KeyPairGenerator.getInstance(RSA);
 			keyGen.initialize(1024);
-			KeyPair keypair = keyGen.generateKeyPair();
-			privKey = keypair.getPrivate();
-			pubKey = keypair.getPublic();	
+			keyPair = keyGen.generateKeyPair();
+			privKey = keyPair.getPrivate();
+			pubKey = keyPair.getPublic();	
 		} catch (NoSuchAlgorithmException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 
-	}    
+	}
+	public byte[] cifrar() {
+		try {
+			Cipher cipher = Cipher.getInstance(RSA);
+			
+			BufferedReader stdIn =new BufferedReader(new InputStreamReader(System.in));
+			String pwd = stdIn.readLine();
+			byte [] clearText = pwd.getBytes();
+			String s1 = new String (clearText);
+			System.out.println("clave original: " + s1);
+			cipher.init(Cipher.ENCRYPT_MODE, keyPair.getPublic());
+			long startTime = System.nanoTime();
+			byte [] cipheredText = cipher.doFinal(clearText);
+			long endTime = System.nanoTime();
+			System.out.println("clave cifrada: " + cipheredText);
+			System.out.println("Tiempo asimetrico: " +
+					(endTime - startTime));
+			return cipheredText;
+		}
+		catch (Exception e) {
+			System.out.println("Excepcion: " + e.getMessage());
+			return null;
+		}
+	}
+
+	public void descifrar(byte[] cipheredText) {
+		try {
+			Cipher cipher = Cipher.getInstance(RSA);
+			cipher.init(Cipher.DECRYPT_MODE, keyPair.getPrivate());
+			byte [] clearText = cipher.doFinal(cipheredText);
+			String s3 = new String(clearText);
+			System.out.println("clave original: " + s3);
+		}
+		catch (Exception e) {
+			System.out.println("Excepcion: " + e.getMessage());
+		}
+	}
 }
