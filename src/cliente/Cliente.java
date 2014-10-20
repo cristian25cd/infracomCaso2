@@ -1,7 +1,9 @@
 package cliente;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.math.BigInteger;
@@ -9,11 +11,18 @@ import java.net.Socket;
 import java.net.UnknownHostException;
 import java.security.*;
 import java.security.cert.CertificateEncodingException;
+import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.util.Calendar;
+import java.util.Date;
 
-import org.bouncycastle.asn1.x509.V3TBSCertificateGenerator;
-import org.bouncycastle.asn1.x509.X509Name;
+import javax.security.auth.x500.X500Principal;
+
+import org.bouncycastle.*;
+import org.bouncycastle.x509.*;
+import org.bouncycastle.asn1.*;
+import org.bouncycastle.asn1.x509.*;
+import org.bouncycastle.jce.PrincipalUtil;
 import org.bouncycastle.x509.util.*;
 
 /**
@@ -65,9 +74,10 @@ public class Cliente
 	public Cliente( )
 	{
 		try {
-			socket = new Socket("infracomp.virtual.uniandes.edu.co",80);//443
+			socket = new Socket("infracomp.virtual.uniandes.edu.co",443);
 			lector = new BufferedReader(new InputStreamReader(socket.getInputStream())); 
 			escritor = new PrintWriter(socket.getOutputStream(), true);
+			getKey();
 		} 
 		catch (UnknownHostException e) {
 			e.printStackTrace();
@@ -97,7 +107,7 @@ public class Cliente
 				System.out.println("se recibio "+res);
 				if (res.equals(ACK)) 
 				{
-					String cadena =ALGORITMOS+":"+RC4+":"+RSA+":"+HMACSHA1;
+					String cadena =ALGORITMOS+":"+AES+":"+RSA+":"+HMACSHA256;
 					c.escritor.println(cadena);
 					System.out.println("Se envio "+cadena);
 
@@ -112,17 +122,26 @@ public class Cliente
 				}
 				else if (res.equals(CERTSRV)) 
 				{
-					res=c.lector.readLine();
-					System.out.println("se recibio "+res);
-					certServ = Transformacion.destransformar(res);
-				}
-				else if (res.equals(CERTCLNT)) 
-				{
-					X509Certificate cert = certificado(); 
-					certClie= cert.getEncoded();
-					c.escritor.println(Transformacion.transformar(certClie));
-					System.out.println("Se envio certClient");
-
+					try {
+						res = c.lector.readLine();
+						System.out.println("se recibio " + res);
+						
+						//LECTURA DEL CERTIDFICADO
+						certServ= res.getBytes();
+						
+						//CREACION Y ENVIO DEL CERTIFICADO
+						c.escritor.println(CERTCLNT);
+						System.out.println("Se envio "+CERTCLNT);
+						
+						X509Certificate cer = certificado();
+						certClie = cer.getEncoded();
+						c.escritor.println(certClie);
+						System.out.println("Se envio "+certClie);
+						
+					} catch (Exception e) {
+						// TODO: handle exception
+					}
+				
 				}
 				else if (res.equals(INIT)) 
 				{
@@ -156,33 +175,30 @@ public class Cliente
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-		} catch (CertificateEncodingException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
 		}
 
 	}
 
-	private static X509Certificate  certificado() {
+	private static X509Certificate  certificado() throws InvalidKeyException, NoSuchProviderException, SecurityException, SignatureException {
 
-		getKey();
-		Calendar expiry = Calendar.getInstance();
-        expiry.add(Calendar.DAY_OF_YEAR, 100);
- 
-        X509Name x509Name = new X509Name("CN=" + "CristianHugo");
+		Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
+		X509V3CertificateGenerator certGen = new X509V3CertificateGenerator();
+		certGen.setSerialNumber(BigInteger.valueOf(System.currentTimeMillis()));
+		certGen.setIssuerDN(new X500Principal("CN=Test Certificate"));
+		certGen.setNotBefore(new Date(System.currentTimeMillis() - 10000));
+		certGen.setNotAfter(new Date(System.currentTimeMillis() + 10000));
+		certGen.setSubjectDN(new X500Principal("CN=Test Certificate"));
+		certGen.setPublicKey(pubKey);
+		certGen.setSignatureAlgorithm("SHA256WithRSAEncryption");
+		certGen.addExtension(X509Extensions.BasicConstraints, true, new BasicConstraints(false));
+		certGen.addExtension(X509Extensions.KeyUsage, true, new KeyUsage(KeyUsage.digitalSignature
+				| KeyUsage.keyEncipherment));
+		certGen.addExtension(X509Extensions.ExtendedKeyUsage, true, new ExtendedKeyUsage(
+				KeyPurposeId.id_kp_serverAuth));
+		certGen.addExtension(X509Extensions.SubjectAlternativeName, false, new GeneralNames(
+				new GeneralName(GeneralName.rfc822Name, "test@test.test")));
+		return certGen.generateX509Certificate(privKey, "BC");
 
-        V3TBSCertificateGenerator certGen = new V3TBSCertificateGenerator();
-        certGen.setSerialNumber(new DERInteger(BigInteger.valueOf(System.currentTimeMillis())));
-        certGen.setIssuer(PrincipalUtil.getSubjectX509Principal(caCert));
-        certGen.setSubject(x509Name);
-        DERObjectIdentifier sigOID = X509Util.getAlgorithmOID("SHA1WithRSAEncryption");
-        AlgorithmIdentifier sigAlgId = new AlgorithmIdentifier(sigOID, new DERNull());
-        certGen.setSignature(sigAlgId);
-        certGen.setSubjectPublicKeyInfo(new SubjectPublicKeyInfo((ASN1Sequence)new ASN1InputStream(
-                new ByteArrayInputStream(pubKey.getEncoded())).readObject()));
-        certGen.setStartDate(new Time(new Date(System.currentTimeMillis())));
-        certGen.setEndDate(new Time(expiry.getTime()));
-         TBSCertificateStructure tbsCert = certGen.generateTBSCertificate();
 	}
 
 	private static void getKey() 
