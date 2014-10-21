@@ -155,8 +155,21 @@ public class Cliente
 
 
 			//Etapa 4:
+			res=c.lector.readLine();
+			byte[] llaveCifrada = Transformacion.destransformar(res.split(":")[1]);
 			
-			c.escritor.println(Transformacion.transformar());
+			//Descifrar con llave privada la llave siemtrica
+			
+			
+			//Cifrar con la llave publica del servidor la llave simetrica
+			
+			//Si estatus = a ok, enviar datos con la llave simetrica
+			
+			//luego enviar el hash de datos cifrados con la llave privada del cliente
+			
+			//Recibir la respuesta cifrada con la llave simetrica
+			
+			c.escritor.println();
 			
 			System.out.println("Se envio "+INIT);
 
