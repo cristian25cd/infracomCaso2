@@ -66,7 +66,7 @@ public class Cliente
 	private Socket socket;
 	private BufferedReader lector;
 	private PrintWriter escritor;
-	private OutputStream output;
+	private static OutputStream output;
 	private static InputStream input;
 	private static KeyPair keyPair;
 	private static byte[] certServ;
@@ -147,13 +147,17 @@ public class Cliente
 
 			X509Certificate cer = certificado();
 			certClie = cer.getEncoded();
-			c.escritor.println(certClie);
-			System.out.println("Se envio "+certClie);
+		
+			output.write(certClie);
+			output.flush();
+			
+			System.out.println("Se envio "+cer.getPublicKey());
 
 
 			//Etapa 4:
 			
-			c.escritor.println(INIT);
+			c.escritor.println(Transformacion.transformar());
+			
 			System.out.println("Se envio "+INIT);
 
 			res=c.lector.readLine();
