@@ -1,13 +1,18 @@
 package cliente;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.math.BigInteger;
 import java.net.Socket;
 import java.net.UnknownHostException;
 import java.security.*;
+import java.security.cert.CertificateException;
+import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.util.Date;
 
@@ -37,6 +42,9 @@ public class Cliente
 	private final static String INIT = "INIT";
 	private final static String INFO = "INFO"; 
 
+	public static final int PUERTO = 443;
+	public static final String SERVIDOR = "infracomp.virtual.uniandes.edu.co";
+
 	//-----------------------------------------------------------------
 	// Constantes Algoritmos
 	//-----------------------------------------------------------------
@@ -58,20 +66,30 @@ public class Cliente
 	private Socket socket;
 	private BufferedReader lector;
 	private PrintWriter escritor;
+	private OutputStream output;
+	private static InputStream input;
 	private static KeyPair keyPair;
 	private static byte[] certServ;
 	private static byte[] certClie;
 	private static PublicKey pubKey;
 	private static PrivateKey privKey;
+	private static X509Certificate certificadoServidor;
 	//-----------------------------------------------------------------
 	// Constructor
 	//-----------------------------------------------------------------
 	public Cliente( )
 	{
 		try {
-			socket = new Socket("infracomp.virtual.uniandes.edu.co",80);
+			socket = new Socket(SERVIDOR,PUERTO);
 			lector = new BufferedReader(new InputStreamReader(socket.getInputStream())); 
 			escritor = new PrintWriter(socket.getOutputStream(), true);
+			
+			//INPUT STREAM PARA RECIBIR FLUJO DE BYTES DEL SERVIDOR
+			 input = socket.getInputStream();
+
+			//OUTPUT STREAM PARA MANDAR FLUJO DE BYTES DEL SERVIDOR
+			 output = socket.getOutputStream();
+
 			getKey();
 		} 
 		catch (UnknownHostException e) {
@@ -88,86 +106,87 @@ public class Cliente
 
 	public static void main(String[] args) 
 	{
+		Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());	
+
 		Cliente c = new Cliente();
 		String datos = "caso 2 infracom.";
 		String respuesta="";
 
 		try {
+			//Etapa 1:
+
 			c.escritor.println(HOLA);
 			System.out.println("Se envio "+HOLA);
-			boolean termino =false;
-			while (!termino) 
+
+			String res =c.lector.readLine();
+			System.out.println("se recibio "+res); //ACK
+
+			String cadena =ALGORITMOS+":"+AES+":"+RSA+":"+HMACSHA256;
+			c.escritor.println(cadena);
+			System.out.println("Se envio "+cadena);
+			System.out.println("se recibio "+c.lector.readLine());//STATUS
+
+			//Etapa 2:
+
+			//LECTURA DEL CERTIDFICADO SERVIDOR
+
+			System.out.println("se recibio " + c.lector.readLine());//CERTSRV
+			
+			byte[] certificadoServidorBytes = new byte[529];
+			int numBytesLeidos = input.read(certificadoServidorBytes);
+			CertificateFactory creador = CertificateFactory.getInstance("X.509");
+			InputStream in = new ByteArrayInputStream(certificadoServidorBytes);
+			X509Certificate certificadoServidor = (X509Certificate)creador.generateCertificate(in);
+			
+			System.out.println(certificadoServidor.getPublicKey());
+			//Etapa 3:
+
+			//CREACION Y ENVIO DEL CERTIFICADO CLIENTE
+			c.escritor.println(CERTCLNT);
+			System.out.println("Se envio "+CERTCLNT);
+
+			X509Certificate cer = certificado();
+			certClie = cer.getEncoded();
+			c.escritor.println(certClie);
+			System.out.println("Se envio "+certClie);
+
+
+			//Etapa 4:
+			
+			c.escritor.println(INIT);
+			System.out.println("Se envio "+INIT);
+
+			res=c.lector.readLine();
+			System.out.println("se recibio "+res);
+
+			if (res.contains(ERROR)) 
 			{
-				String res =c.lector.readLine();
-				System.out.println("se recibio "+res);
-				if (res.equals(ACK)) 
-				{
-					String cadena =ALGORITMOS+":"+AES+":"+RSA+":"+HMACSHA256;
-					c.escritor.println(cadena);
-					System.out.println("Se envio "+cadena);
-
-					res =c.lector.readLine();
-					System.out.println("se recibio "+res);
-
-					if (res.contains(ERROR)) 
-					{
-						System.out.println("Error en la etapa 1.");
-						termino=true;
-					}
-				}
-				else if (res.equals(CERTSRV)) 
-				{
-					try {
-						res = c.lector.readLine();
-						System.out.println("se recibio " + res);
-
-						//LECTURA DEL CERTIDFICADO
-						certServ= res.getBytes();
-
-						//CREACION Y ENVIO DEL CERTIFICADO
-						c.escritor.println(CERTCLNT);
-						System.out.println("Se envio "+CERTCLNT);
-
-						X509Certificate cer = certificado();
-						certClie = cer.getEncoded();
-						c.escritor.println(certClie);
-						System.out.println("Se envio "+certClie);
-
-					} catch (Exception e) {
-						// TODO: handle exception
-					}
-
-				}
-				else if (res.contains(INIT)) 
-				{
-					c.escritor.println(INIT);
-					System.out.println("Se envio "+INIT);
-
-					res=c.lector.readLine();
-					System.out.println("se recibio "+res);
-
-					if (res.contains(ERROR)) 
-					{
-						System.out.println("Error en la etapa 4.");
-						termino=true;
-					}
-					else
-					{
-						c.escritor.println(INFO+":"+datos);
-						c.escritor.println(INFO+":"+datos);
-						System.out.println("Se envio "+INFO);
-						respuesta=c.lector.readLine();
-						System.out.println("Se recibio "+respuesta);
-						termino=true;
-					}
-				}
-				else
-				{
-					termino=true;
-				}
-
+				System.out.println("Error en la etapa 4.");
+			}
+			else
+			{
+				c.escritor.println(INFO+":"+datos);
+				c.escritor.println(INFO+":"+datos);
+				System.out.println("Se envio "+INFO);
+				respuesta=c.lector.readLine();
+				System.out.println("Se recibio "+respuesta);
 			}
 		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (CertificateException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (InvalidKeyException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (NoSuchProviderException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (SecurityException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (SignatureException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
@@ -214,7 +233,7 @@ public class Cliente
 	public byte[] cifrar() {
 		try {
 			Cipher cipher = Cipher.getInstance(RSA);
-			
+
 			BufferedReader stdIn =new BufferedReader(new InputStreamReader(System.in));
 			String pwd = stdIn.readLine();
 			byte [] clearText = pwd.getBytes();
