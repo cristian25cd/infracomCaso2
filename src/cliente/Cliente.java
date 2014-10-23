@@ -136,7 +136,7 @@ public class Cliente
 
 			System.out.println("se recibio " + c.lector.readLine());//CERTSRV
 
-			byte[] certificadoServidorBytes = new byte[529];
+			byte[] certificadoServidorBytes = new byte[530];
 			int numBytesLeidos = input.read(certificadoServidorBytes);
 			CertificateFactory creador = CertificateFactory.getInstance("X.509");
 			InputStream in = new ByteArrayInputStream(certificadoServidorBytes);
