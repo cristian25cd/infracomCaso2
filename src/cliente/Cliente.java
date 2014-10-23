@@ -16,7 +16,11 @@ import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.util.Date;
 
+import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.NoSuchPaddingException;
+import javax.crypto.spec.SecretKeySpec;
 import javax.security.auth.x500.X500Principal;
 
 import org.bouncycastle.x509.*;
@@ -83,12 +87,12 @@ public class Cliente
 			socket = new Socket(SERVIDOR,PUERTO);
 			lector = new BufferedReader(new InputStreamReader(socket.getInputStream())); 
 			escritor = new PrintWriter(socket.getOutputStream(), true);
-			
+
 			//INPUT STREAM PARA RECIBIR FLUJO DE BYTES DEL SERVIDOR
-			 input = socket.getInputStream();
+			input = socket.getInputStream();
 
 			//OUTPUT STREAM PARA MANDAR FLUJO DE BYTES DEL SERVIDOR
-			 output = socket.getOutputStream();
+			output = socket.getOutputStream();
 
 			getKey();
 		} 
@@ -131,13 +135,13 @@ public class Cliente
 			//LECTURA DEL CERTIDFICADO SERVIDOR
 
 			System.out.println("se recibio " + c.lector.readLine());//CERTSRV
-			
+
 			byte[] certificadoServidorBytes = new byte[529];
 			int numBytesLeidos = input.read(certificadoServidorBytes);
 			CertificateFactory creador = CertificateFactory.getInstance("X.509");
 			InputStream in = new ByteArrayInputStream(certificadoServidorBytes);
 			X509Certificate certificadoServidor = (X509Certificate)creador.generateCertificate(in);
-			
+
 			System.out.println(certificadoServidor.getPublicKey());
 			//Etapa 3:
 
@@ -147,47 +151,55 @@ public class Cliente
 
 			X509Certificate cer = certificado();
 			certClie = cer.getEncoded();
-		
+
 			output.write(certClie);
 			output.flush();
-			
+
 			System.out.println("Se envio "+cer.getPublicKey());
 
 
 			//Etapa 4:
 			res=c.lector.readLine();
 			byte[] llaveCifrada = Transformacion.destransformar(res.split(":")[1]);
-			
+
 			//Descifrar con llave privada la llave siemtrica
-			
-			
+
+			String llaveSimetrica=c.descifrar(llaveCifrada);
+
 			//Cifrar con la llave publica del servidor la llave simetrica
-			
+			byte[] cifrado = c.cifrar(llaveSimetrica, Cliente.certificadoServidor.getPublicKey());
+			c.escritor.println(Transformacion.transformar(cifrado));
+
 			//Si estatus = a ok, enviar datos con la llave simetrica
+			c.lector.readLine();
+
+			SecretKeySpec key = new SecretKeySpec(llaveSimetrica.getBytes(), "AES");   
+			Cipher cipher;   
+
+			cipher = Cipher.getInstance("AES");
 			
+				//Comienzo a encriptar    
+			cipher.init(Cipher.ENCRYPT_MODE, key);    
+			byte[] campoCifrado = cipher.doFinal(datos.getBytes());
+			c.escritor.println(Transformacion.transformar(campoCifrado));
+
+
 			//luego enviar el hash de datos cifrados con la llave privada del cliente
-			
+
+			MessageDigest md = MessageDigest.getInstance("SHA-256");
+
+			md.update(datos.getBytes("UTF-8"));
+			byte[] digest = md.digest();
+
+			c.escritor.println(Transformacion.transformar(c.cifrar(digest, keyPair.getPrivate())));
+
 			//Recibir la respuesta cifrada con la llave simetrica
 			
-			c.escritor.println();
+			cipher.init(Cipher.DECRYPT_MODE, key);
+			byte[] datosDecifrados = cipher.doFinal(Transformacion.destransformar(c.lector.readLine()));    
+			String mensaje_original = new String(datosDecifrados);     
+			System.out.println(mensaje_original); 
 			
-			System.out.println("Se envio "+INIT);
-
-			res=c.lector.readLine();
-			System.out.println("se recibio "+res);
-
-			if (res.contains(ERROR)) 
-			{
-				System.out.println("Error en la etapa 4.");
-			}
-			else
-			{
-				c.escritor.println(INFO+":"+datos);
-				c.escritor.println(INFO+":"+datos);
-				System.out.println("Se envio "+INFO);
-				respuesta=c.lector.readLine();
-				System.out.println("Se recibio "+respuesta);
-			}
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -204,6 +216,18 @@ public class Cliente
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		} catch (SignatureException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (NoSuchAlgorithmException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (NoSuchPaddingException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IllegalBlockSizeException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (BadPaddingException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
@@ -247,16 +271,32 @@ public class Cliente
 		}
 
 	}
-	public byte[] cifrar() {
+	public byte[] cifrar(String pwd, PublicKey key) {
 		try {
 			Cipher cipher = Cipher.getInstance(RSA);
-
-			BufferedReader stdIn =new BufferedReader(new InputStreamReader(System.in));
-			String pwd = stdIn.readLine();
 			byte [] clearText = pwd.getBytes();
 			String s1 = new String (clearText);
 			System.out.println("clave original: " + s1);
-			cipher.init(Cipher.ENCRYPT_MODE, keyPair.getPublic());
+			cipher.init(Cipher.ENCRYPT_MODE, key);
+			long startTime = System.nanoTime();
+			byte [] cipheredText = cipher.doFinal(clearText);
+			long endTime = System.nanoTime();
+			System.out.println("clave cifrada: " + cipheredText);
+			System.out.println("Tiempo asimetrico: " +
+					(endTime - startTime));
+			return cipheredText;
+		}
+		catch (Exception e) {
+			System.out.println("Excepcion: " + e.getMessage());
+			return null;
+		}
+	}
+	public byte[] cifrar(byte[] clearText, PrivateKey key) {
+		try {
+			Cipher cipher = Cipher.getInstance(RSA);
+			String s1 = new String (clearText);
+			System.out.println("clave original: " + s1);
+			cipher.init(Cipher.ENCRYPT_MODE, key);
 			long startTime = System.nanoTime();
 			byte [] cipheredText = cipher.doFinal(clearText);
 			long endTime = System.nanoTime();
@@ -271,16 +311,18 @@ public class Cliente
 		}
 	}
 
-	public void descifrar(byte[] cipheredText) {
+	public String descifrar(byte[] cipheredText) {
 		try {
 			Cipher cipher = Cipher.getInstance(RSA);
 			cipher.init(Cipher.DECRYPT_MODE, keyPair.getPrivate());
 			byte [] clearText = cipher.doFinal(cipheredText);
 			String s3 = new String(clearText);
 			System.out.println("clave original: " + s3);
+			return s3;
 		}
 		catch (Exception e) {
 			System.out.println("Excepcion: " + e.getMessage());
 		}
+		return null;
 	}
 }
