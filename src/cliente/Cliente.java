@@ -149,7 +149,7 @@ public class Cliente
 			c.escritor.println(CERTCLNT);
 			System.out.println("Se envio "+CERTCLNT);
 
-			X509Certificate cer = certificado();
+			java.security.cert.X509Certificate cer = certificado();
 			certClie = cer.getEncoded();
 
 			output.write(certClie);
