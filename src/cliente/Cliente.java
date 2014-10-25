@@ -111,6 +111,7 @@ public class Cliente
 			String cadena =ALGORITMOS+":"+AES+":"+RSA+":"+HMACSHA256;
 			escritor.println(cadena);
 			System.out.println("Se envio "+cadena);
+			
 			System.out.println("se recibio "+lector.readLine());//STATUS
 
 			//Etapa 2:
@@ -119,9 +120,18 @@ public class Cliente
 
 			System.out.println("se recibio " + lector.readLine());//CERTSRV
 
-			byte[] certificadoServidorBytes = new byte[2048];
-			int numBytesLeidos = socket.getInputStream().read(certificadoServidorBytes);
+			byte[] certificadoServidorBytes = new byte[520];
+		
+			int av= input.available();
+			
+			if (av<520) 
+			{
+				System.out.println(av);
+			}
+			int numBytesLeidos=input.read(certificadoServidorBytes);
+		
 			System.out.println("Numero de bytes leidos "+numBytesLeidos);
+			
 			CertificateFactory creador = CertificateFactory.getInstance("X.509");
 			InputStream in = new ByteArrayInputStream(certificadoServidorBytes);
 			X509Certificate certificadoServidor = (X509Certificate)creador.generateCertificate(in);
@@ -190,18 +200,6 @@ public class Cliente
 		} 
 	}
 
-	//-----------------------------------------------------------------
-	// Métodos
-	//-----------------------------------------------------------------
-
-	public static void main(String[] args) 
-	{
-		Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());	
-
-		Cliente c = new Cliente();
-
-	}
-
 	private X509Certificate  certificado() throws InvalidKeyException, NoSuchProviderException, SecurityException, SignatureException {
 
 		Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
@@ -239,7 +237,8 @@ public class Cliente
 		}
 
 	}
-	public byte[] cifrar(String pwd, PublicKey key) {
+
+	private byte[] cifrar(String pwd, PublicKey key) {
 		try {
 			Cipher cipher = Cipher.getInstance(RSA);
 			byte [] clearText = pwd.getBytes();
@@ -259,7 +258,8 @@ public class Cliente
 			return null;
 		}
 	}
-	public byte[] cifrar(byte[] clearText, PrivateKey key) {
+
+	private byte[] cifrar(byte[] clearText, PrivateKey key) {
 		try {
 			Cipher cipher = Cipher.getInstance(RSA);
 			String s1 = new String (clearText);
@@ -279,7 +279,7 @@ public class Cliente
 		}
 	}
 
-	public String descifrar(byte[] cipheredText) {
+	private String descifrar(byte[] cipheredText) {
 		try {
 			Cipher cipher = Cipher.getInstance(RSA);
 			cipher.init(Cipher.DECRYPT_MODE, keyPair.getPrivate());
@@ -292,5 +292,22 @@ public class Cliente
 			System.out.println("Excepcion: " + e.getMessage());
 		}
 		return null;
+	}
+
+	//-----------------------------------------------------------------
+	// Métodos
+	//-----------------------------------------------------------------
+	
+	
+	//-----------------------------------------------------------------
+	// Main
+	//-----------------------------------------------------------------
+	
+	public static void main(String[] args) 
+	{
+		Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());	
+	
+		Cliente c = new Cliente();
+	
 	}
 }
