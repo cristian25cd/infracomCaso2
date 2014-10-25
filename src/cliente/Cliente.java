@@ -120,8 +120,6 @@ public class Cliente
 			//LECTURA DEL CERTIFICADO SERVIDOR
 
 			System.out.println("se recibio " + lector.readLine());//CERTSRV
-			escritor.println(OK);
-			System.out.println(OK);
 
 //			byte[] certificadoServidorBytes = new byte[520];
 //			int offset = 0;
