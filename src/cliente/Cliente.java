@@ -3,6 +3,7 @@ package cliente;
 import java.io.BufferedInputStream;
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -126,14 +127,6 @@ public class Cliente
 			int numeroDeBytesLeidos= input.read(certificadoServidorBytes); 
 			System.out.println("Numero de bytes leidos "+numeroDeBytesLeidos);
 
-			//			char[] chars = new char[520];
-			//			int num = lector.read(chars);
-			//			System.out.println(num);
-			//			byte[]certificadoServidorBytes = new byte[520];
-			//			for (int i = 0; i < 520; i++) {
-			//				certificadoServidorBytes[i]=(byte)chars[i];
-			//			}
-
 			CertificateFactory creador = CertificateFactory.getInstance("X.509");
 			InputStream in = new ByteArrayInputStream(certificadoServidorBytes);
 			X509Certificate certificadoServidor = (X509Certificate)creador.generateCertificate(in);
@@ -155,7 +148,7 @@ public class Cliente
 
 			//Etapa 4:
 			res=lector.readLine();
-			byte[] llaveCifrada = Transformacion.destransformar(res.split(":")[1]);
+			byte[] llaveCifrada = Transformacion.destransformar(res.split(":")[0]);
 
 			//Descifrar con llave privada la llave siemtrica
 
@@ -166,7 +159,7 @@ public class Cliente
 			escritor.println(Transformacion.transformar(cifrado));
 
 			//Si estatus = a ok, enviar datos con la llave simetrica
-			lector.readLine();
+			lector.readLine();//Estatus
 
 			SecretKeySpec key = new SecretKeySpec(llaveSimetrica.getBytes(), "AES");   
 			Cipher cipher;   
@@ -203,7 +196,6 @@ public class Cliente
 
 	private X509Certificate  certificado() throws InvalidKeyException, NoSuchProviderException, SecurityException, SignatureException {
 
-		Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
 		//objeto que representa el certificado
 		certGen = new X509V3CertificateGenerator();
 		//informacion del certificado
@@ -310,7 +302,7 @@ public class Cliente
 
 	public static void main(String[] args) 
 	{
-		Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());	
+		Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
 
 		Cliente c = new Cliente();
 
