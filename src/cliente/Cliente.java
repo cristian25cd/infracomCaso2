@@ -1,5 +1,6 @@
 package cliente;
 
+import java.io.BufferedInputStream;
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -91,7 +92,7 @@ public class Cliente
 			escritor = new PrintWriter(socket.getOutputStream(), true);
 
 			//INPUT STREAM PARA RECIBIR FLUJO DE BYTES DEL SERVIDOR
-			input = socket.getInputStream();
+			input =socket.getInputStream();
 
 			//OUTPUT STREAM PARA MANDAR FLUJO DE BYTES DEL SERVIDOR
 			output = socket.getOutputStream();
@@ -112,7 +113,7 @@ public class Cliente
 			String cadena =ALGORITMOS+":"+SINCRONICO+":"+ASINCRONICO+":"+HMAC;
 			escritor.println(cadena);
 			System.out.println("Se envio "+cadena);
-			
+
 			System.out.println("se recibio "+lector.readLine());//STATUS
 
 			//Etapa 2:
@@ -120,24 +121,19 @@ public class Cliente
 			//LECTURA DEL CERTIFICADO SERVIDOR
 
 			System.out.println("se recibio " + lector.readLine());//CERTSRV
-
-//			byte[] certificadoServidorBytes = new byte[520];
-//			int offset = 0;
-//			while (offset < 520) {
-//			    int bytesRead = input.read(certificadoServidorBytes, offset, 520 - offset);
-//			    if (bytesRead == -1) { 
-//			        // Incomplete packet - handle however you want to
-//			    }
-//			    offset += bytesRead;
-//			}
-//
-//			System.out.println("Numero de bytes leidos "+offset);
-
-			char[] chars = new char[520];
-			int num = lector.read(chars);
-			System.out.println(num);
-			byte[]certificadoServidorBytes =new String(chars).getBytes("UTF-8");
 			
+			byte[] certificadoServidorBytes = new byte[520];
+			int numeroDeBytesLeidos= input.read(certificadoServidorBytes); 
+			System.out.println("Numero de bytes leidos "+numeroDeBytesLeidos);
+
+			//			char[] chars = new char[520];
+			//			int num = lector.read(chars);
+			//			System.out.println(num);
+			//			byte[]certificadoServidorBytes = new byte[520];
+			//			for (int i = 0; i < 520; i++) {
+			//				certificadoServidorBytes[i]=(byte)chars[i];
+			//			}
+
 			CertificateFactory creador = CertificateFactory.getInstance("X.509");
 			InputStream in = new ByteArrayInputStream(certificadoServidorBytes);
 			X509Certificate certificadoServidor = (X509Certificate)creador.generateCertificate(in);
@@ -306,17 +302,17 @@ public class Cliente
 	//-----------------------------------------------------------------
 	// Métodos
 	//-----------------------------------------------------------------
-	
-	
+
+
 	//-----------------------------------------------------------------
 	// Main
 	//-----------------------------------------------------------------
-	
+
 	public static void main(String[] args) 
 	{
 		Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());	
-	
+
 		Cliente c = new Cliente();
-	
+
 	}
 }
