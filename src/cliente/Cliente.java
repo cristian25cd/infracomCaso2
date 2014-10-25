@@ -55,29 +55,30 @@ public class Cliente
 
 	private final static String DES ="DES";
 	private final static String AES = "AES";
-	private final static String BLOWFISH = "Blowfish";
-	private final static String RC4 ="RC4";
+	//private final static String BLOWFISH = "Blowfish";
+	//private final static String RC4 ="RC4";
 
 	private final static String RSA = "RSA";
 
-	private final static String HMACMD5 ="HMACMD5";
-	private final static String HMACSHA1 = "HMACSHA1";
+	//private final static String HMACMD5 ="HMACMD5";
+	//private final static String HMACSHA1 = "HMACSHA1";
 	private final static String HMACSHA256 = "HMACSHA256";
 
 	//-----------------------------------------------------------------
 	// Atributos
 	//-----------------------------------------------------------------
+
 	private Socket socket;
 	private BufferedReader lector;
 	private PrintWriter escritor;
-	private static OutputStream output;
-	private static InputStream input;
-	private static KeyPair keyPair;
-	private static byte[] certServ;
-	private static byte[] certClie;
-	private static PublicKey pubKey;
-	private static PrivateKey privKey;
-	private static X509Certificate certificadoServidor;
+	private OutputStream output;
+	private InputStream input;
+	private KeyPair keyPair;
+	private byte[] certServ;
+	private byte[] certClie;
+	private PublicKey pubKey;
+	private PrivateKey privKey;
+	private X509Certificate certificadoServidor;
 	//-----------------------------------------------------------------
 	// Constructor
 	//-----------------------------------------------------------------
@@ -95,49 +96,32 @@ public class Cliente
 			output = socket.getOutputStream();
 
 			getKey();
-		} 
-		catch (UnknownHostException e) {
-			e.printStackTrace();
-		}
-		catch (IOException e) {
-			e.printStackTrace();
-		}
-	}
 
-	//-----------------------------------------------------------------
-	// Métodos
-	//-----------------------------------------------------------------
+			String datos = "caso 2 infracom.";
+			String respuesta="";
 
-	public static void main(String[] args) 
-	{
-		Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());	
-
-		Cliente c = new Cliente();
-		String datos = "caso 2 infracom.";
-		String respuesta="";
-
-		try {
 			//Etapa 1:
 
-			c.escritor.println(HOLA);
+			escritor.println(HOLA);
 			System.out.println("Se envio "+HOLA);
 
-			String res =c.lector.readLine();
+			String res =lector.readLine();
 			System.out.println("se recibio "+res); //ACK
 
 			String cadena =ALGORITMOS+":"+AES+":"+RSA+":"+HMACSHA256;
-			c.escritor.println(cadena);
+			escritor.println(cadena);
 			System.out.println("Se envio "+cadena);
-			System.out.println("se recibio "+c.lector.readLine());//STATUS
+			System.out.println("se recibio "+lector.readLine());//STATUS
 
 			//Etapa 2:
 
-			//LECTURA DEL CERTIDFICADO SERVIDOR
+			//LECTURA DEL CERTIFICADO SERVIDOR
 
-			System.out.println("se recibio " + c.lector.readLine());//CERTSRV
+			System.out.println("se recibio " + lector.readLine());//CERTSRV
 
-			byte[] certificadoServidorBytes = new byte[530];
-			int numBytesLeidos = input.read(certificadoServidorBytes);
+			byte[] certificadoServidorBytes = new byte[2048];
+			int numBytesLeidos = socket.getInputStream().read(certificadoServidorBytes);
+			System.out.println("Numero de bytes leidos "+numBytesLeidos);
 			CertificateFactory creador = CertificateFactory.getInstance("X.509");
 			InputStream in = new ByteArrayInputStream(certificadoServidorBytes);
 			X509Certificate certificadoServidor = (X509Certificate)creador.generateCertificate(in);
@@ -146,7 +130,7 @@ public class Cliente
 			//Etapa 3:
 
 			//CREACION Y ENVIO DEL CERTIFICADO CLIENTE
-			c.escritor.println(CERTCLNT);
+			escritor.println(CERTCLNT);
 			System.out.println("Se envio "+CERTCLNT);
 
 			java.security.cert.X509Certificate cer = certificado();
@@ -159,29 +143,29 @@ public class Cliente
 
 
 			//Etapa 4:
-			res=c.lector.readLine();
+			res=lector.readLine();
 			byte[] llaveCifrada = Transformacion.destransformar(res.split(":")[1]);
 
 			//Descifrar con llave privada la llave siemtrica
 
-			String llaveSimetrica=c.descifrar(llaveCifrada);
+			String llaveSimetrica=descifrar(llaveCifrada);
 
 			//Cifrar con la llave publica del servidor la llave simetrica
-			byte[] cifrado = c.cifrar(llaveSimetrica, Cliente.certificadoServidor.getPublicKey());
-			c.escritor.println(Transformacion.transformar(cifrado));
+			byte[] cifrado = cifrar(llaveSimetrica, certificadoServidor.getPublicKey());
+			escritor.println(Transformacion.transformar(cifrado));
 
 			//Si estatus = a ok, enviar datos con la llave simetrica
-			c.lector.readLine();
+			lector.readLine();
 
 			SecretKeySpec key = new SecretKeySpec(llaveSimetrica.getBytes(), "AES");   
 			Cipher cipher;   
 
 			cipher = Cipher.getInstance("AES");
-			
-				//Comienzo a encriptar    
+
+			//Comienzo a encriptar    
 			cipher.init(Cipher.ENCRYPT_MODE, key);    
 			byte[] campoCifrado = cipher.doFinal(datos.getBytes());
-			c.escritor.println(Transformacion.transformar(campoCifrado));
+			escritor.println(Transformacion.transformar(campoCifrado));
 
 
 			//luego enviar el hash de datos cifrados con la llave privada del cliente
@@ -191,50 +175,34 @@ public class Cliente
 			md.update(datos.getBytes("UTF-8"));
 			byte[] digest = md.digest();
 
-			c.escritor.println(Transformacion.transformar(c.cifrar(digest, keyPair.getPrivate())));
+			escritor.println(Transformacion.transformar(cifrar(digest, keyPair.getPrivate())));
 
 			//Recibir la respuesta cifrada con la llave simetrica
-			
+
 			cipher.init(Cipher.DECRYPT_MODE, key);
-			byte[] datosDecifrados = cipher.doFinal(Transformacion.destransformar(c.lector.readLine()));    
+			byte[] datosDecifrados = cipher.doFinal(Transformacion.destransformar(lector.readLine()));    
 			String mensaje_original = new String(datosDecifrados);     
 			System.out.println(mensaje_original); 
-			
-		} catch (IOException e) {
+
+		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-		} catch (CertificateException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (InvalidKeyException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (NoSuchProviderException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (SecurityException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (SignatureException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (NoSuchAlgorithmException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (NoSuchPaddingException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (IllegalBlockSizeException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (BadPaddingException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+		} 
+	}
+
+	//-----------------------------------------------------------------
+	// Métodos
+	//-----------------------------------------------------------------
+
+	public static void main(String[] args) 
+	{
+		Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());	
+
+		Cliente c = new Cliente();
 
 	}
 
-	private static X509Certificate  certificado() throws InvalidKeyException, NoSuchProviderException, SecurityException, SignatureException {
+	private X509Certificate  certificado() throws InvalidKeyException, NoSuchProviderException, SecurityException, SignatureException {
 
 		Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
 		X509V3CertificateGenerator certGen = new X509V3CertificateGenerator();
@@ -256,7 +224,7 @@ public class Cliente
 
 	}
 
-	private static void getKey() 
+	private void getKey() 
 	{
 		KeyPairGenerator keyGen;
 		try {
