@@ -53,16 +53,16 @@ public class Cliente
 	// Constantes Algoritmos
 	//-----------------------------------------------------------------
 
-	private final static String DES ="DES";
-	private final static String AES = "AES";
+	//private final static String DES ="DES";
+	private final static String SINCRONICO = "AES";
 	//private final static String BLOWFISH = "Blowfish";
 	//private final static String RC4 ="RC4";
 
-	private final static String RSA = "RSA";
+	private final static String ASINCRONICO = "RSA";
 
 	//private final static String HMACMD5 ="HMACMD5";
 	//private final static String HMACSHA1 = "HMACSHA1";
-	private final static String HMACSHA256 = "HMACSHA256";
+	private final static String HMAC = "HMACSHA256";
 
 	//-----------------------------------------------------------------
 	// Atributos
@@ -79,6 +79,7 @@ public class Cliente
 	private PublicKey pubKey;
 	private PrivateKey privKey;
 	private X509Certificate certificadoServidor;
+	private X509V3CertificateGenerator certGen;
 	//-----------------------------------------------------------------
 	// Constructor
 	//-----------------------------------------------------------------
@@ -108,7 +109,7 @@ public class Cliente
 			String res =lector.readLine();
 			System.out.println("se recibio "+res); //ACK
 
-			String cadena =ALGORITMOS+":"+AES+":"+RSA+":"+HMACSHA256;
+			String cadena =ALGORITMOS+":"+SINCRONICO+":"+ASINCRONICO+":"+HMAC;
 			escritor.println(cadena);
 			System.out.println("Se envio "+cadena);
 			
@@ -142,7 +143,7 @@ public class Cliente
 			//CREACION Y ENVIO DEL CERTIFICADO CLIENTE
 			escritor.println(CERTCLNT);
 			System.out.println("Se envio "+CERTCLNT);
-
+			getKey();
 			java.security.cert.X509Certificate cer = certificado();
 			certClie = cer.getEncoded();
 
@@ -203,7 +204,9 @@ public class Cliente
 	private X509Certificate  certificado() throws InvalidKeyException, NoSuchProviderException, SecurityException, SignatureException {
 
 		Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
-		X509V3CertificateGenerator certGen = new X509V3CertificateGenerator();
+		//objeto que representa el certificado
+		certGen = new X509V3CertificateGenerator();
+		//informacion del certificado
 		certGen.setSerialNumber(BigInteger.valueOf(System.currentTimeMillis()));
 		certGen.setIssuerDN(new X500Principal("CN=Test Certificate"));
 		certGen.setNotBefore(new Date(System.currentTimeMillis() - 10000));
@@ -226,21 +229,23 @@ public class Cliente
 	{
 		KeyPairGenerator keyGen;
 		try {
-			keyGen = KeyPairGenerator.getInstance(RSA);
-			keyGen.initialize(1024);
+			keyGen = KeyPairGenerator.getInstance(ASINCRONICO);
+			keyGen.initialize(1024, new SecureRandom());			
 			keyPair = keyGen.generateKeyPair();
+			System.out.println("Se genera el par de llaves");
 			privKey = keyPair.getPrivate();
+			System.out.println("la llave privada es: " + privKey);
 			pubKey = keyPair.getPublic();	
+			System.out.println("la llave publica es: " + pubKey);
 		} catch (NoSuchAlgorithmException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-		}
-
+		} 
 	}
 
 	private byte[] cifrar(String pwd, PublicKey key) {
 		try {
-			Cipher cipher = Cipher.getInstance(RSA);
+			Cipher cipher = Cipher.getInstance(ASINCRONICO);
 			byte [] clearText = pwd.getBytes();
 			String s1 = new String (clearText);
 			System.out.println("clave original: " + s1);
@@ -261,7 +266,7 @@ public class Cliente
 
 	private byte[] cifrar(byte[] clearText, PrivateKey key) {
 		try {
-			Cipher cipher = Cipher.getInstance(RSA);
+			Cipher cipher = Cipher.getInstance(ASINCRONICO);
 			String s1 = new String (clearText);
 			System.out.println("clave original: " + s1);
 			cipher.init(Cipher.ENCRYPT_MODE, key);
@@ -281,7 +286,7 @@ public class Cliente
 
 	private String descifrar(byte[] cipheredText) {
 		try {
-			Cipher cipher = Cipher.getInstance(RSA);
+			Cipher cipher = Cipher.getInstance(ASINCRONICO);
 			cipher.init(Cipher.DECRYPT_MODE, keyPair.getPrivate());
 			byte [] clearText = cipher.doFinal(cipheredText);
 			String s3 = new String(clearText);
