@@ -120,18 +120,25 @@ public class Cliente
 			//LECTURA DEL CERTIFICADO SERVIDOR
 
 			System.out.println("se recibio " + lector.readLine());//CERTSRV
+			escritor.println(OK);
+			System.out.println(OK);
 
-			byte[] certificadoServidorBytes = new byte[520];
-		
-			int av= input.available();
-			
-			if (av<520) 
-			{
-				System.out.println(av);
-			}
-			int numBytesLeidos=input.read(certificadoServidorBytes);
-		
-			System.out.println("Numero de bytes leidos "+numBytesLeidos);
+//			byte[] certificadoServidorBytes = new byte[520];
+//			int offset = 0;
+//			while (offset < 520) {
+//			    int bytesRead = input.read(certificadoServidorBytes, offset, 520 - offset);
+//			    if (bytesRead == -1) { 
+//			        // Incomplete packet - handle however you want to
+//			    }
+//			    offset += bytesRead;
+//			}
+//
+//			System.out.println("Numero de bytes leidos "+offset);
+
+			char[] chars = new char[520];
+			int num = lector.read(chars);
+			System.out.println(num);
+			byte[]certificadoServidorBytes =new String(chars).getBytes("UTF-8");
 			
 			CertificateFactory creador = CertificateFactory.getInstance("X.509");
 			InputStream in = new ByteArrayInputStream(certificadoServidorBytes);
@@ -143,7 +150,6 @@ public class Cliente
 			//CREACION Y ENVIO DEL CERTIFICADO CLIENTE
 			escritor.println(CERTCLNT);
 			System.out.println("Se envio "+CERTCLNT);
-			getKey();
 			java.security.cert.X509Certificate cer = certificado();
 			certClie = cer.getEncoded();
 
